@@ -14,12 +14,33 @@ class GameScene: SKScene {
     private var titleLabel: SKLabelNode?
     private var playButton: SKSpriteNode?
     private var howToPlayButton: SKSpriteNode?
+    private var gameCenterButton: SKSpriteNode?
     
     // Theme
     private let theme = ThemeManager.shared
     
     override func didMove(to view: SKView) {
         setupMenu()
+        
+        // Register for Game Center authentication notifications
+        NotificationCenter.default.addObserver(self, 
+                                             selector: #selector(gameCenterAuthenticationChanged), 
+                                             name: .gameCenterAuthenticationChanged, 
+                                             object: nil)
+    }
+    
+    @objc func gameCenterAuthenticationChanged() {
+        // Update Game Center button based on authentication status
+        if GameCenterManager.shared.isAuthenticated {
+            // Show Game Center button if authenticated
+            if gameCenterButton == nil {
+                setupGameCenterButton()
+            }
+        } else {
+            // Hide Game Center button if not authenticated
+            gameCenterButton?.removeFromParent()
+            gameCenterButton = nil
+        }
     }
     
     // Called when the theme changes
@@ -38,6 +59,10 @@ class GameScene: SKScene {
         
         if let howToPlayButton = self.howToPlayButton {
             howToPlayButton.removeFromParent()
+        }
+        
+        if let gameCenterButton = self.gameCenterButton {
+            gameCenterButton.removeFromParent()
         }
         
         // Recreate buttons with new theme
@@ -90,6 +115,25 @@ class GameScene: SKScene {
         if let howToPlayButton = howToPlayButton {
             addChild(howToPlayButton)
         }
+        
+        // Add Game Center button if authenticated
+        if GameCenterManager.shared.isAuthenticated {
+            setupGameCenterButton()
+        }
+    }
+    
+    private func setupGameCenterButton() {
+        // Create Game Center button with modern styling
+        let gameCenterButtonSize = CGSize(width: 200, height: 60)
+        gameCenterButton = createStyledButton(
+            text: "Game Center",
+            position: CGPoint(x: self.frame.midX, y: self.frame.midY - 160),
+            size: gameCenterButtonSize
+        )
+        if let gameCenterButton = gameCenterButton {
+            gameCenterButton.name = "game_center"
+            addChild(gameCenterButton)
+        }
     }
     
     private func createStyledButton(text: String, position: CGPoint, size: CGSize) -> SKSpriteNode {
@@ -139,6 +183,11 @@ class GameScene: SKScene {
             } else if node.name == "close_instructions" {
                 // Close the instructions panel
                 self.childNode(withName: "instructions_panel")?.removeFromParent()
+            } else if node.name == "game_center" {
+                // Show Game Center dashboard
+                if let viewController = self.view?.window?.rootViewController {
+                    GameCenterManager.shared.showGameCenter(presentingViewController: viewController)
+                }
             }
         }
     }
@@ -215,5 +264,9 @@ class GameScene: SKScene {
     
     override func update(_ currentTime: TimeInterval) {
         // Called before each frame is rendered
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

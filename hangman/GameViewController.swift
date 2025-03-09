@@ -8,11 +8,15 @@
 import UIKit
 import SpriteKit
 import GameplayKit
+import GameKit
 
 class GameViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Authenticate player with Game Center
+        authenticateGameCenterPlayer()
         
         if let view = self.view as! SKView? {
             // Create the menu scene directly instead of loading from .sks file
@@ -27,6 +31,24 @@ class GameViewController: UIViewController {
                                                  selector: #selector(themeDidChange), 
                                                  name: .themeDidChange, 
                                                  object: nil)
+        }
+    }
+    
+    private func authenticateGameCenterPlayer() {
+        // Authenticate the player with Game Center
+        GameCenterManager.shared.authenticatePlayer(presentingViewController: self) { success, error in
+            if success {
+                print("Game Center authentication successful")
+                
+                // Post notification so scenes can update their Game Center UI
+                NotificationCenter.default.post(name: .gameCenterAuthenticationChanged, object: nil)
+            } else {
+                if let error = error {
+                    print("Game Center authentication failed: \(error.localizedDescription)")
+                } else {
+                    print("Game Center authentication failed: User declined")
+                }
+            }
         }
     }
     

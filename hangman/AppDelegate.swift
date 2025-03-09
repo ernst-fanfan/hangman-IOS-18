@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import GameKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -20,6 +21,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if #available(iOS 13.0, *) {
             window?.overrideUserInterfaceStyle = .unspecified // Allow system to control light/dark mode
         }
+        
+        // Initialize Game Center
+        _ = GameCenterManager.shared
         
         return true
     }
