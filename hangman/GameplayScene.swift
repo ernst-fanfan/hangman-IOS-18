@@ -24,36 +24,86 @@ class GameplayScene: SKScene {
     private var incorrectGuesses = 0
     private let maxIncorrectGuesses = 6
     
+    // Theme
+    private let theme = ThemeManager.shared
+    
     override func didMove(to view: SKView) {
         setupGame()
     }
     
-    private func setupGame() {
-        // Set background color
-        backgroundColor = SKColor(red: 0.2, green: 0.2, blue: 0.3, alpha: 1.0)
+    // Called when the theme changes
+    func refreshTheme() {
+        // Update background
+        backgroundColor = theme.backgroundColor
         
-        // Create back button
-        backButton = createButton(text: "Menu", position: CGPoint(x: 100, y: self.frame.height - 50), size: CGSize(width: 120, height: 40))
+        // Update UI elements
+        if let backButton = self.backButton {
+            backButton.removeFromParent()
+            self.backButton = createStyledButton(
+                text: "Menu", 
+                position: CGPoint(x: 100, y: self.frame.height - 50), 
+                size: CGSize(width: 120, height: 40)
+            )
+            if let newBackButton = self.backButton {
+                newBackButton.name = "back_button"
+                addChild(newBackButton)
+            }
+        }
+        
+        // Update word display
+        if let wordLabel = self.wordLabel {
+            wordLabel.fontName = theme.bodyFont()
+            wordLabel.fontColor = theme.textColor
+        }
+        
+        // Update guesses remaining label
+        if let guessesRemainingLabel = self.guessesRemainingLabel {
+            guessesRemainingLabel.fontName = theme.bodyFont()
+            guessesRemainingLabel.fontColor = theme.textColor
+        }
+        
+        // Update letter buttons if any
+        for button in letterButtons {
+            button.removeFromParent()
+        }
+        letterButtons.removeAll()
+        
+        // TODO: Recreate letter buttons with new theme
+        
+        // Update game state display
+        updateUI()
+    }
+    
+    private func setupGame() {
+        // Set background color from theme
+        backgroundColor = theme.backgroundColor
+        
+        // Create back button with modern styling
+        backButton = createStyledButton(
+            text: "Menu", 
+            position: CGPoint(x: 100, y: self.frame.height - 50), 
+            size: CGSize(width: 120, height: 40)
+        )
         if let backButton = backButton {
             backButton.name = "back_button"
             addChild(backButton)
         }
         
-        // Create word display
-        wordLabel = SKLabelNode(fontNamed: "Courier")
+        // Create word display with themed font and color
+        wordLabel = SKLabelNode(fontNamed: theme.bodyFont())
         if let wordLabel = wordLabel {
             wordLabel.fontSize = 30
-            wordLabel.fontColor = SKColor.white
+            wordLabel.fontColor = theme.textColor
             wordLabel.position = CGPoint(x: self.frame.midX, y: self.frame.midY + 50)
             wordLabel.horizontalAlignmentMode = .center
             addChild(wordLabel)
         }
         
-        // Create guesses remaining label
-        guessesRemainingLabel = SKLabelNode(fontNamed: "Arial")
+        // Create guesses remaining label with themed font and color
+        guessesRemainingLabel = SKLabelNode(fontNamed: theme.bodyFont())
         if let guessesRemainingLabel = guessesRemainingLabel {
             guessesRemainingLabel.fontSize = 20
-            guessesRemainingLabel.fontColor = SKColor.white
+            guessesRemainingLabel.fontColor = theme.textColor
             guessesRemainingLabel.position = CGPoint(x: self.frame.midX, y: self.frame.height - 50)
             guessesRemainingLabel.horizontalAlignmentMode = .center
             addChild(guessesRemainingLabel)
@@ -67,17 +117,29 @@ class GameplayScene: SKScene {
         startNewGame()
     }
     
-    private func createButton(text: String, position: CGPoint, size: CGSize) -> SKSpriteNode {
-        let button = SKSpriteNode(color: SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0), size: size)
+    private func createStyledButton(text: String, position: CGPoint, size: CGSize) -> SKSpriteNode {
+        let cornerRadius: CGFloat = 12
+        
+        // Create the button container
+        let button = SKSpriteNode(color: .clear, size: size)
         button.position = position
         button.name = text.lowercased().replacingOccurrences(of: " ", with: "_")
         
-        let label = SKLabelNode(fontNamed: "Arial")
+        // Create the rounded background
+        let background = SKShapeNode(rectOf: size, cornerRadius: cornerRadius)
+        background.fillColor = theme.secondaryColor
+        background.strokeColor = .clear
+        background.zPosition = 0
+        button.addChild(background)
+        
+        // Create the label
+        let label = SKLabelNode(fontNamed: theme.buttonFont())
         label.text = text
         label.fontSize = size.height * 0.4
-        label.fontColor = SKColor.white
+        label.fontColor = theme.textColor
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
+        label.zPosition = 1
         button.addChild(label)
         
         return button

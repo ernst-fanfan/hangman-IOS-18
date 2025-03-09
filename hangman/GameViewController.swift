@@ -10,7 +10,7 @@ import SpriteKit
 import GameplayKit
 
 class GameViewController: UIViewController {
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -21,6 +21,35 @@ class GameViewController: UIViewController {
             view.presentScene(scene)
             
             view.ignoresSiblingOrder = true
+            
+            // Register for theme change notifications
+            NotificationCenter.default.addObserver(self, 
+                                                 selector: #selector(themeDidChange), 
+                                                 name: .themeDidChange, 
+                                                 object: nil)
+        }
+    }
+    
+    @objc func themeDidChange() {
+        // Refresh the current scene with the new theme
+        if let view = self.view as? SKView, let currentScene = view.scene {
+            // Determine which scene type is currently presented
+            if let gameScene = currentScene as? GameScene {
+                gameScene.refreshTheme()
+            } else if let gameplayScene = currentScene as? GameplayScene {
+                gameplayScene.refreshTheme()
+            }
+        }
+    }
+    
+    // Support for iOS 13+ dark mode
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        
+        if #available(iOS 13.0, *) {
+            if self.traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+                ThemeManager.shared.updateThemeForTraitCollection(traitCollection)
+            }
         }
     }
 
@@ -34,5 +63,9 @@ class GameViewController: UIViewController {
 
     override var prefersStatusBarHidden: Bool {
         return true
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }
