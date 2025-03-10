@@ -14,12 +14,74 @@ class GameScene: SKScene {
     private var titleLabel: SKLabelNode?
     private var playButton: SKSpriteNode?
     private var howToPlayButton: SKSpriteNode?
+    private var gameCenterButton: SKSpriteNode?
     
     // Theme
     private let theme = ThemeManager.shared
     
     override func didMove(to view: SKView) {
         setupMenu()
+        
+        // Register for Game Center authentication notifications
+        NotificationCenter.default.addObserver(self, 
+                                             selector: #selector(gameCenterAuthenticationChanged), 
+                                             name: .gameCenterAuthenticationChanged, 
+                                             object: nil)
+        
+        // Register for safe area changes
+        NotificationCenter.default.addObserver(self,
+                                             selector: #selector(safeAreaInsetsDidChange),
+                                             name: .safeAreaInsetsDidChange,
+                                             object: nil)
+    }
+    
+    @objc func safeAreaInsetsDidChange() {
+        // Refresh the UI when safe area insets change
+        repositionElements()
+    }
+    
+    private func repositionElements() {
+        // Reposition title
+        if let titleLabel = self.titleLabel {
+            let safeY = SafeAreaHelper.shared.safeTopPosition(in: self, offset: self.frame.height * 0.25)
+            titleLabel.position = CGPoint(x: self.frame.midX, y: safeY)
+        }
+        
+        // Remove and recreate buttons with updated positions
+        if let playButton = self.playButton {
+            playButton.removeFromParent()
+        }
+        
+        if let howToPlayButton = self.howToPlayButton {
+            howToPlayButton.removeFromParent()
+        }
+        
+        if let gameCenterButton = self.gameCenterButton {
+            gameCenterButton.removeFromParent()
+        }
+        
+        // Recreate buttons
+        setupButtons()
+        
+        // Update instruction panel if visible
+        if let panel = self.childNode(withName: "instructions_panel") as? SKSpriteNode {
+            panel.removeFromParent()
+            showInstructions()
+        }
+    }
+    
+    @objc func gameCenterAuthenticationChanged() {
+        // Update Game Center button based on authentication status
+        if GameCenterManager.shared.isAuthenticated {
+            // Show Game Center button if authenticated
+            if gameCenterButton == nil {
+                setupGameCenterButton()
+            }
+        } else {
+            // Hide Game Center button if not authenticated
+            gameCenterButton?.removeFromParent()
+            gameCenterButton = nil
+        }
     }
     
     // Called when the theme changes
@@ -38,6 +100,10 @@ class GameScene: SKScene {
         
         if let howToPlayButton = self.howToPlayButton {
             howToPlayButton.removeFromParent()
+        }
+        
+        if let gameCenterButton = self.gameCenterButton {
+            gameCenterButton.removeFromParent()
         }
         
         // Recreate buttons with new theme
@@ -60,7 +126,11 @@ class GameScene: SKScene {
             titleLabel.text = "Hangman"
             titleLabel.fontSize = 50
             titleLabel.fontColor = theme.primaryColor
-            titleLabel.position = CGPoint(x: self.frame.midX, y: self.frame.midY + 120)
+            
+            // Position respecting the top safe area (Dynamic Island)
+            let safeY = SafeAreaHelper.shared.safeTopPosition(in: self, offset: self.frame.height * 0.25)
+            titleLabel.position = CGPoint(x: self.frame.midX, y: safeY)
+            
             addChild(titleLabel)
         }
         
@@ -69,11 +139,14 @@ class GameScene: SKScene {
     }
     
     private func setupButtons() {
+        // Calculate safe center Y position, slightly higher than center to account for bottom safe area
+        let safeYCenter = self.frame.midY + SafeAreaHelper.shared.bottomInset * 0.5
+        
         // Create play button with modern styling
         let playButtonSize = CGSize(width: 200, height: 60)
         playButton = createStyledButton(
             text: "Play",
-            position: CGPoint(x: self.frame.midX, y: self.frame.midY),
+            position: CGPoint(x: self.frame.midX, y: safeYCenter),
             size: playButtonSize
         )
         if let playButton = playButton {
@@ -84,11 +157,33 @@ class GameScene: SKScene {
         let howToPlayButtonSize = CGSize(width: 200, height: 60)
         howToPlayButton = createStyledButton(
             text: "How To Play",
-            position: CGPoint(x: self.frame.midX, y: self.frame.midY - 80),
+            position: CGPoint(x: self.frame.midX, y: safeYCenter - 80),
             size: howToPlayButtonSize
         )
         if let howToPlayButton = howToPlayButton {
             addChild(howToPlayButton)
+        }
+        
+        // Add Game Center button if authenticated
+        if GameCenterManager.shared.isAuthenticated {
+            setupGameCenterButton()
+        }
+    }
+    
+    private func setupGameCenterButton() {
+        // Calculate safe center Y position, slightly higher than center
+        let safeYCenter = self.frame.midY + SafeAreaHelper.shared.bottomInset * 0.5
+        
+        // Create Game Center button with modern styling
+        let gameCenterButtonSize = CGSize(width: 200, height: 60)
+        gameCenterButton = createStyledButton(
+            text: "Game Center",
+            position: CGPoint(x: self.frame.midX, y: safeYCenter - 160),
+            size: gameCenterButtonSize
+        )
+        if let gameCenterButton = gameCenterButton {
+            gameCenterButton.name = "game_center"
+            addChild(gameCenterButton)
         }
     }
     
@@ -139,6 +234,11 @@ class GameScene: SKScene {
             } else if node.name == "close_instructions" {
                 // Close the instructions panel
                 self.childNode(withName: "instructions_panel")?.removeFromParent()
+            } else if node.name == "game_center" {
+                // Show Game Center dashboard
+                if let viewController = self.view?.window?.rootViewController {
+                    GameCenterManager.shared.showGameCenter(presentingViewController: viewController)
+                }
             }
         }
     }
@@ -147,13 +247,22 @@ class GameScene: SKScene {
         // Remove previous instruction nodes if any
         self.childNode(withName: "instructions_panel")?.removeFromParent()
         
-        // Create the panel background with rounded corners
-        let panelSize = CGSize(width: self.frame.width * 0.8, height: self.frame.height * 0.7)
+        // Get safe area frame to size and position the panel properly
+        let safeFrame = SafeAreaHelper.shared.safeAreaFrame(in: self)
+        
+        // Create the panel background with rounded corners - size it to fit within safe area
+        let panelSize = CGSize(
+            width: safeFrame.width * 0.9,
+            height: safeFrame.height * 0.8
+        )
         let cornerRadius: CGFloat = 20
+        
+        // Position panel in the center of the safe area
+        let panelY = safeFrame.midY + (SafeAreaHelper.shared.bottomInset - SafeAreaHelper.shared.topInset) / 2
         
         // Panel container
         let panel = SKSpriteNode(color: .clear, size: panelSize)
-        panel.position = CGPoint(x: self.frame.midX, y: self.frame.midY)
+        panel.position = CGPoint(x: safeFrame.midX, y: panelY)
         panel.zPosition = 10
         panel.name = "instructions_panel"
         
@@ -215,5 +324,9 @@ class GameScene: SKScene {
     
     override func update(_ currentTime: TimeInterval) {
         // Called before each frame is rendered
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

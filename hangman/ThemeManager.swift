@@ -150,4 +150,5 @@ class ThemeManager {
 // MARK: - Notification Name Extension
 extension Notification.Name {
     static let themeDidChange = Notification.Name("ThemeManagerThemeDidChange")
+    static let gameCenterAuthenticationChanged = Notification.Name("GameCenterAuthenticationChanged")
 }
