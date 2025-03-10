@@ -36,6 +36,76 @@ class GameplayScene: SKScene {
     
     override func didMove(to view: SKView) {
         setupGame()
+        
+        // Register for safe area changes
+        NotificationCenter.default.addObserver(self,
+                                             selector: #selector(safeAreaInsetsDidChange),
+                                             name: .safeAreaInsetsDidChange,
+                                             object: nil)
+    }
+    
+    @objc func safeAreaInsetsDidChange() {
+        // Refresh the UI when safe area insets change
+        repositionElements()
+    }
+    
+    private func repositionElements() {
+        // Reposition buttons and labels
+        if let backButton = self.backButton {
+            backButton.removeFromParent()
+            
+            // Create new back button with safe area-aware positioning
+            self.backButton = createStyledButton(
+                text: "Menu", 
+                position: CGPoint(
+                    x: SafeAreaHelper.shared.safeLeftPosition(in: self, offset: 60),
+                    y: SafeAreaHelper.shared.safeTopPosition(in: self, offset: 30)
+                ), 
+                size: CGSize(width: 120, height: 40)
+            )
+            if let newBackButton = self.backButton {
+                newBackButton.name = "back_button"
+                addChild(newBackButton)
+            }
+        }
+        
+        // Update guesses remaining label position
+        if let guessesRemainingLabel = self.guessesRemainingLabel {
+            guessesRemainingLabel.position = CGPoint(
+                x: self.frame.midX,
+                y: SafeAreaHelper.shared.safeTopPosition(in: self, offset: 30)
+            )
+        }
+        
+        // Update word label position - keep centered but adjust if needed
+        if let wordLabel = self.wordLabel {
+            wordLabel.position = CGPoint(
+                x: self.frame.midX,
+                y: self.frame.midY + SafeAreaHelper.shared.bottomInset * 0.5
+            )
+        }
+        
+        // Reposition test button if exists
+        if let testButton = self.childNode(withName: "test_complete") as? SKSpriteNode {
+            testButton.removeFromParent()
+            
+            let newTestButton = createStyledButton(
+                text: "Test Complete",
+                position: CGPoint(
+                    x: SafeAreaHelper.shared.safeRightPosition(in: self, offset: 75),
+                    y: SafeAreaHelper.shared.safeTopPosition(in: self, offset: 30)
+                ),
+                size: CGSize(width: 150, height: 40)
+            )
+            newTestButton.name = "test_complete"
+            addChild(newTestButton)
+        }
+        
+        // Update any active completion panel
+        if let panel = self.childNode(withName: "completion_panel") {
+            panel.removeFromParent()
+            showCompletionMessage()
+        }
     }
     
     // Called when the theme changes
@@ -43,12 +113,15 @@ class GameplayScene: SKScene {
         // Update background
         backgroundColor = theme.backgroundColor
         
-        // Update UI elements
+        // Update UI elements - position them with safe area awareness
         if let backButton = self.backButton {
             backButton.removeFromParent()
             self.backButton = createStyledButton(
                 text: "Menu", 
-                position: CGPoint(x: 100, y: self.frame.height - 50), 
+                position: CGPoint(
+                    x: SafeAreaHelper.shared.safeLeftPosition(in: self, offset: 60),
+                    y: SafeAreaHelper.shared.safeTopPosition(in: self, offset: 30)
+                ),
                 size: CGSize(width: 120, height: 40)
             )
             if let newBackButton = self.backButton {
@@ -85,10 +158,13 @@ class GameplayScene: SKScene {
         // Set background color from theme
         backgroundColor = theme.backgroundColor
         
-        // Create back button with modern styling
+        // Create back button with modern styling - positioned to respect safe areas
         backButton = createStyledButton(
             text: "Menu", 
-            position: CGPoint(x: 100, y: self.frame.height - 50), 
+            position: CGPoint(
+                x: SafeAreaHelper.shared.safeLeftPosition(in: self, offset: 60),
+                y: SafeAreaHelper.shared.safeTopPosition(in: self, offset: 30)
+            ), 
             size: CGSize(width: 120, height: 40)
         )
         if let backButton = backButton {
@@ -101,7 +177,11 @@ class GameplayScene: SKScene {
         if let wordLabel = wordLabel {
             wordLabel.fontSize = 30
             wordLabel.fontColor = theme.textColor
-            wordLabel.position = CGPoint(x: self.frame.midX, y: self.frame.midY + 50)
+            // Center with slight adjustment for bottom safe area
+            wordLabel.position = CGPoint(
+                x: self.frame.midX,
+                y: self.frame.midY + SafeAreaHelper.shared.bottomInset * 0.5
+            )
             wordLabel.horizontalAlignmentMode = .center
             addChild(wordLabel)
         }
@@ -111,7 +191,11 @@ class GameplayScene: SKScene {
         if let guessesRemainingLabel = guessesRemainingLabel {
             guessesRemainingLabel.fontSize = 20
             guessesRemainingLabel.fontColor = theme.textColor
-            guessesRemainingLabel.position = CGPoint(x: self.frame.midX, y: self.frame.height - 50)
+            // Position at top, respecting safe area
+            guessesRemainingLabel.position = CGPoint(
+                x: self.frame.midX,
+                y: SafeAreaHelper.shared.safeTopPosition(in: self, offset: 30)
+            )
             guessesRemainingLabel.horizontalAlignmentMode = .center
             addChild(guessesRemainingLabel)
         }
@@ -124,7 +208,10 @@ class GameplayScene: SKScene {
         if GameCenterManager.shared.isAuthenticated {
             let testButton = createStyledButton(
                 text: "Test Complete", 
-                position: CGPoint(x: self.frame.width - 100, y: self.frame.height - 50), 
+                position: CGPoint(
+                    x: SafeAreaHelper.shared.safeRightPosition(in: self, offset: 75),
+                    y: SafeAreaHelper.shared.safeTopPosition(in: self, offset: 30)
+                ), 
                 size: CGSize(width: 150, height: 40)
             )
             testButton.name = "test_complete"
@@ -283,10 +370,19 @@ class GameplayScene: SKScene {
     }
     
     private func showCompletionMessage() {
-        // Create a completion message panel
-        let panelSize = CGSize(width: self.frame.width * 0.8, height: self.frame.height * 0.5)
+        // Get safe area frame to size and position the panel properly
+        let safeFrame = SafeAreaHelper.shared.safeAreaFrame(in: self)
+        
+        // Create a completion message panel - sized to fit within safe area
+        let panelSize = CGSize(
+            width: safeFrame.width * 0.9,
+            height: safeFrame.height * 0.7
+        )
+        
+        // Position panel in the center of the safe area
+        let panelY = safeFrame.midY + (SafeAreaHelper.shared.bottomInset - SafeAreaHelper.shared.topInset) / 2
         let panel = SKSpriteNode(color: theme.backgroundColor.withAlphaComponent(0.9), size: panelSize)
-        panel.position = CGPoint(x: self.frame.midX, y: self.frame.midY)
+        panel.position = CGPoint(x: safeFrame.midX, y: panelY)
         panel.zPosition = 100
         panel.name = "completion_panel"
         
@@ -352,5 +448,9 @@ class GameplayScene: SKScene {
     
     override func update(_ currentTime: TimeInterval) {
         // Game logic updates
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

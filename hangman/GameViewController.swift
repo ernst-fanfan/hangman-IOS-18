@@ -34,6 +34,28 @@ class GameViewController: UIViewController {
         }
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // Update safe area insets when view layout changes
+        updateSafeAreaInsets()
+    }
+    
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        
+        // Update safe area insets when safe area changes
+        updateSafeAreaInsets()
+    }
+    
+    private func updateSafeAreaInsets() {
+        // Update safe area helper with current insets
+        SafeAreaHelper.shared.updateSafeAreaInsets(from: self)
+        
+        // Notify that safe area insets have changed
+        NotificationCenter.default.post(name: .safeAreaInsetsDidChange, object: nil)
+    }
+    
     private func authenticateGameCenterPlayer() {
         // Authenticate the player with Game Center
         GameCenterManager.shared.authenticatePlayer(presentingViewController: self) { success, error in
@@ -73,6 +95,9 @@ class GameViewController: UIViewController {
                 ThemeManager.shared.updateThemeForTraitCollection(traitCollection)
             }
         }
+        
+        // Update safe area insets when trait collection changes (e.g., rotation)
+        updateSafeAreaInsets()
     }
 
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
