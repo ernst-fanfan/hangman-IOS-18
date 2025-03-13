@@ -32,6 +32,11 @@ class GameViewController: UIViewController {
                                                  name: .themeDidChange, 
                                                  object: nil)
         }
+        
+        // Register for trait changes
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, previousTraitCollection: UITraitCollection) in
+            self.handleTraitChange(previousTraitCollection)
+        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -86,14 +91,10 @@ class GameViewController: UIViewController {
         }
     }
     
-    // Support for iOS 13+ dark mode
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        
-        if #available(iOS 13.0, *) {
-            if self.traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
-                ThemeManager.shared.updateThemeForTraitCollection(traitCollection)
-            }
+    // Method to handle trait changes
+    private func handleTraitChange(_ previousTraitCollection: UITraitCollection?) {
+        if self.traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            ThemeManager.shared.updateThemeForTraitCollection(traitCollection)
         }
         
         // Update safe area insets when trait collection changes (e.g., rotation)

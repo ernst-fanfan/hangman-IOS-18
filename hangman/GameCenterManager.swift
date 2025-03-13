@@ -67,7 +67,7 @@ class GameCenterManager: NSObject, GKLocalPlayerListener {
     private var leaderboards: [GKLeaderboard] = []
     
     private func loadLeaderboards() {
-        GKLeaderboard.loadLeaderboards { [weak self] leaderboards, error in
+        GKLeaderboard.loadLeaderboards(IDs: nil) { [weak self] leaderboards, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -109,10 +109,12 @@ class GameCenterManager: NSObject, GKLocalPlayerListener {
             return
         }
         
-        let scoreReporter = GKScore(leaderboardIdentifier: leaderboardID)
-        scoreReporter.value = Int64(score)
-        
-        GKScore.report([scoreReporter]) { error in
+        GKLeaderboard.submitScore(
+            score,
+            context: 0,
+            player: GKLocalPlayer.local,
+            leaderboardIDs: [leaderboardID]
+        ) { error in
             if let error = error {
                 print("Error reporting score: \(error.localizedDescription)")
             } else {
@@ -165,9 +167,8 @@ class GameCenterManager: NSObject, GKLocalPlayerListener {
             return
         }
         
-        let gameCenterVC = GKGameCenterViewController()
+        let gameCenterVC = GKGameCenterViewController(state: .dashboard)
         gameCenterVC.gameCenterDelegate = self
-        gameCenterVC.viewState = .default
         presentingViewController.present(gameCenterVC, animated: true)
     }
     
@@ -178,14 +179,17 @@ class GameCenterManager: NSObject, GKLocalPlayerListener {
             return
         }
         
-        let gameCenterVC = GKGameCenterViewController()
-        gameCenterVC.gameCenterDelegate = self
-        gameCenterVC.viewState = .leaderboards
-        
+        // Configure the default leaderboard if one is specified
         if let leaderboardID = leaderboardID {
-            gameCenterVC.leaderboardIdentifier = leaderboardID
+            GKLocalPlayer.local.setDefaultLeaderboardIdentifier(leaderboardID) { error in
+                if let error = error {
+                    print("Error setting default leaderboard: \(error.localizedDescription)")
+                }
+            }
         }
         
+        let gameCenterVC = GKGameCenterViewController(state: .leaderboards)
+        gameCenterVC.gameCenterDelegate = self
         presentingViewController.present(gameCenterVC, animated: true)
     }
     
@@ -196,9 +200,8 @@ class GameCenterManager: NSObject, GKLocalPlayerListener {
             return
         }
         
-        let gameCenterVC = GKGameCenterViewController()
+        let gameCenterVC = GKGameCenterViewController(state: .achievements)
         gameCenterVC.gameCenterDelegate = self
-        gameCenterVC.viewState = .achievements
         presentingViewController.present(gameCenterVC, animated: true)
     }
     
